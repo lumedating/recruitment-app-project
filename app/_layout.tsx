@@ -1,29 +1,49 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import { DarkerGrotesque_700Bold } from "@expo-google-fonts/darker-grotesque";
+import { DMSans_300Light } from "@expo-google-fonts/dm-sans";
+import { useFonts } from "expo-font";
+import { Slot, SplashScreen, useRouter, useSegments } from "expo-router";
+import { useEffect } from "react";
+import { AuthContextProvider, useAuth } from "../context/authContext";
 
-import { useColorScheme } from '@/hooks/useColorScheme';
+SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+const MainLayout = () => {
+  const { isAuthenticated } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    // Check if the user is authenticated
+    if (typeof isAuthenticated === "undefined") return;
+    const inApp = segments[0] == "(app)";
+    if (isAuthenticated && !inApp) {
+      // Redirect to the home page
+      router.replace("/(app)/home");
+    } else if (!isAuthenticated) {
+      // Redirect to login page
+      router.replace("/login");
+    }
+  }, [isAuthenticated]);
+
+  /* FONT LOADING */
+  const [loaded, error] = useFonts({
+    DGBold: DarkerGrotesque_700Bold,
+    DMSans: DMSans_300Light,
   });
 
-  if (!loaded) {
-    // Async font loading only occurs in development.
-    return null;
-  }
+  useEffect(() => {
+    if (loaded || error) {
+      SplashScreen.hideAsync();
+    }
+  }, [loaded, error]);
 
+  return <Slot />;
+};
+
+export default function RootLayout() {
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <AuthContextProvider>
+      <MainLayout />
+    </AuthContextProvider>
   );
 }
