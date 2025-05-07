@@ -1,4 +1,9 @@
-import { onAuthStateChanged } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+} from "firebase/auth";
 import { createContext, useContext, useEffect, useState } from "react";
 import { auth } from "../firebaseConfig";
 
@@ -22,9 +27,10 @@ export const AuthContextProvider = ({ children }) => {
     return unsubscribe;
   }, []);
 
-  const login = async () => {
+  const login = async (email, password) => {
     try {
-      return { success: true, user: "something" };
+      const response = await signInWithEmailAndPassword(auth, email, password);
+      return { success: true };
     } catch (error) {
       return { success: false, message: error.message };
     }
@@ -32,14 +38,26 @@ export const AuthContextProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      // logout logic here
-    } catch (error) {}
+      await signOut(auth);
+      return { success: true };
+    } catch (error) {
+      return { success: false, msg: error.message };
+    }
   };
 
-  const register = async (email, password, username, profileURL) => {
+  const register = async (email, password) => {
     try {
-      // register logic here
-    } catch (error) {}
+      const response = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      console.log("RESPONSE: ", response?.user);
+
+      return { success: true, data: response?.user };
+    } catch (error) {
+      return { success: false, msg: error.message };
+    }
   };
 
   return (

@@ -1,4 +1,7 @@
-import { DarkerGrotesque_700Bold } from "@expo-google-fonts/darker-grotesque";
+import {
+  DarkerGrotesque_600SemiBold,
+  DarkerGrotesque_700Bold,
+} from "@expo-google-fonts/darker-grotesque";
 import { DMSans_300Light } from "@expo-google-fonts/dm-sans";
 import { useFonts } from "expo-font";
 import { Slot, SplashScreen, useRouter, useSegments } from "expo-router";
@@ -21,13 +24,14 @@ const MainLayout = () => {
       router.replace("/(app)/home");
     } else if (!isAuthenticated) {
       // Redirect to login page
-      router.replace("/login");
+      router.replace("/startScreen");
     }
   }, [isAuthenticated]);
 
   /* FONT LOADING */
   const [loaded, error] = useFonts({
     DGBold: DarkerGrotesque_700Bold,
+    DGSemiBold: DarkerGrotesque_600SemiBold,
     DMSans: DMSans_300Light,
   });
 

@@ -1,67 +1,119 @@
-import { StatusBar } from "expo-status-bar";
-import React, { useState } from "react";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useAuth } from "@/context/authContext";
+import { useRouter } from "expo-router";
+import React, { useRef, useState } from "react";
+import {
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import {
   heightPercentageToDP as hp,
   widthPercentageToDP as wp,
 } from "react-native-responsive-screen";
 import Loading from "../components/Loading";
-import { globalStyles, globalStyleSheet } from "./globalStyles";
+import { globalStyles, globalStyleSheet } from "../globalStyles";
 
 export default function Login() {
   const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
+  const router = useRouter();
+
+  const emailRef = useRef("");
+  const passwordRef = useRef("");
+
+  const handleLogin = async () => {
+    if (!emailRef.current || !passwordRef.current) {
+      Alert.alert("Login", "Please fill all of the fields!");
+    }
+
+    setLoading(true);
+
+    const response = await login(emailRef.current, passwordRef.current);
+    setLoading(false);
+
+    if (!response.success) {
+      Alert.alert("Login", response.msg);
+    }
+  };
 
   return (
     <View style={styles.container}>
-      <StatusBar style="dark" />
+      <View style={styles.loginTopContainer}>
+        <TouchableOpacity
+          style={globalStyleSheet.iconButton}
+          onPress={() => {
+            router.push("/startScreen");
+          }}
+        >
+          <Image
+            source={require("../assets/images/Back Icon.png")}
+            resizeMode="contain"
+            style={{ width: 25 }}
+          />
+        </TouchableOpacity>
 
-      <Image
-        style={styles.logo}
-        source={require("../assets/images/Lume Logo.png")}
-        resizeMode="contain"
-      />
+        <Text style={globalStyleSheet.pageTitle}>Login</Text>
 
-      <View style={styles.loginImageContainer}>
-        <Image
-          source={require("../assets/images/Friends Stock Image.jpg")}
-          style={styles.loginImage}
-          resizeMode="cover"
+        <View style={styles.loginTopPlaceholder} />
+      </View>
+
+      <View style={{ height: 5 }} />
+
+      <Text style={globalStyleSheet.title}>Welcome Back!</Text>
+
+      <View style={{ height: 35 }} />
+
+      <View style={globalStyleSheet.textInputContainer}>
+        <Text style={globalStyleSheet.textInputTitle}>Email Address</Text>
+        <TextInput
+          onChangeText={(value) => (emailRef.current = value)}
+          style={globalStyleSheet.textInput}
+          placeholder="fake@gmail.com"
+          placeholderTextColor={globalStyles.colors.secondaryText}
         />
       </View>
 
-      <View style={styles.loginBottomContainer}>
-        <View style={styles.loginButtonContainer}>
-          {loading ? (
-            <View style={styles.loginLoadingContainer}>
-              <Loading size={hp(25)} />
-            </View>
-          ) : (
-            <TouchableOpacity style={globalStyleSheet.button}>
-              <Text style={globalStyleSheet.buttonText}>
-                Continue With Google
-              </Text>
-              <Image
-                style={{ width: 25, marginLeft: 15 }}
-                source={require("../assets/images/Google Logo.png")}
-                resizeMode="contain"
-              />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <Text style={styles.legalText}>
-          By clicking continue you agree to our{" "}
-          <Text style={styles.legalTextUnderline}>Terms & Conditions</Text> and{" "}
-          <Text style={styles.legalTextUnderline}>Privacy Policy</Text>
-        </Text>
+      <View style={globalStyleSheet.textInputContainer}>
+        <Text style={globalStyleSheet.textInputTitle}>Password</Text>
+        <TextInput
+          onChangeText={(value) => (passwordRef.current = value)}
+          style={globalStyleSheet.textInput}
+          placeholder="lumerocks123!"
+          placeholderTextColor={globalStyles.colors.secondaryText}
+          secureTextEntry={true}
+        />
       </View>
+
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.loginButtonContainer}
+      >
+        {loading ? (
+          <View style={styles.loginLoadingContainer}>
+            <Loading size={hp(25)} />
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={globalStyleSheet.formButton}
+            onPress={handleLogin}
+          >
+            <Text style={globalStyleSheet.buttonText}>Login With Email</Text>
+          </TouchableOpacity>
+        )}
+      </KeyboardAvoidingView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    paddingTop: 100,
+    paddingTop: 55,
     paddingHorizontal: 25,
     width: wp("100%"),
     height: hp("100%"),
@@ -70,23 +122,6 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
     alignItems: "center",
     flexDirection: "column",
-  },
-  logo: {
-    width: wp("50%"),
-    marginLeft: -15,
-  },
-  loginImage: {
-    width: "100%",
-    height: "100%",
-    padding: 10,
-    borderRadius: 6,
-  },
-  loginImageContainer: {
-    width: "100%",
-    height: hp("40%"),
-    borderColor: globalStyles.colors.line,
-    borderWidth: 2,
-    borderRadius: 12,
   },
   loginBottomContainer: {
     width: "100%",
@@ -102,6 +137,11 @@ const styles = StyleSheet.create({
     display: "flex",
     justifyContent: "center",
     width: "100%",
+    position: "absolute",
+    bottom: 0,
+    marginBottom: 25,
+    borderBottomColor: globalStyles.colors.background,
+    borderBottomWidth: 15,
   },
   loginLoadingContainer: {
     display: "flex",
@@ -110,23 +150,15 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 65,
   },
-  legalText: {
-    textAlign: "center",
-    fontSize: 13,
-    fontFamily: globalStyles.fonts.secondary,
-    color: globalStyles.colors.secondaryText,
-    marginTop: 15,
-    width: 300,
-    lineHeight: 16,
+  loginTopContainer: {
+    width: "100%",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    flexDirection: "row",
   },
-  legalTextUnderline: {
-    textAlign: "center",
-    fontSize: 13,
-    fontFamily: globalStyles.fonts.secondary,
-    color: globalStyles.colors.secondaryText,
-    marginTop: 15,
-    width: 300,
-    lineHeight: 16,
-    textDecorationLine: "underline",
+  loginTopPlaceholder: {
+    width: 50,
+    height: 50,
   },
 });
