@@ -23,25 +23,36 @@ export const FirestoreContextProvider = ({ children }) => {
         "-" +
         String(currentDateObj.getDate()).padStart(2, "0");
 
-      const responseID = doc(collection(db, "responseIDs")).id;
+      const dailyResponseRef = doc(db, "dailyResponses", localDate);
+      const userDocRef = doc(db, "users", userId);
 
-      const responseData = {
-        likes: 0,
-        likedBy: {},
+      // Fetch existing response if it exists
+      const dailySnap = await getDoc(dailyResponseRef);
+      const allResponses = dailySnap.exists()
+        ? dailySnap.data().responses || {}
+        : {};
+      const existingResponse = allResponses[userId] || {};
+
+      // Preserve likes and likedBy
+      const likes = existingResponse.likes || 0;
+      const likedBy = existingResponse.likedBy || {};
+      const responseID =
+        existingResponse.responseID || doc(collection(db, "responseIDs")).id;
+
+      const updatedResponse = {
+        likes,
+        likedBy,
         responseID,
         responseText,
         timestamp: serverTimestamp(),
         username: "Anonymous",
       };
 
-      const dailyResponseRef = doc(db, "dailyResponses", localDate);
-      const userDocRef = doc(db, "users", userId);
-
-      // Write both (not transactionally)
+      // Write updated response to both places
       await setDoc(
         dailyResponseRef,
         {
-          responses: { [userId]: responseData },
+          responses: { [userId]: updatedResponse },
         },
         { merge: true }
       );
@@ -49,7 +60,7 @@ export const FirestoreContextProvider = ({ children }) => {
       await setDoc(
         userDocRef,
         {
-          responses: { [localDate]: responseData },
+          responses: { [localDate]: updatedResponse },
         },
         { merge: true }
       );
