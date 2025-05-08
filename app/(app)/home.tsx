@@ -3,7 +3,7 @@ import { useAuth } from "@/context/authContext";
 import { useFirestore } from "@/context/firestoreContext";
 import { globalStyles, globalStyleSheet } from "@/globalStyles";
 import { useRouter } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -21,24 +21,42 @@ import {
 
 export default function Home() {
   const [loading, setLoading] = useState(false);
+  const [currentResponse, setCurrentResponse] = useState("");
   const router = useRouter();
-  const responseRef = useRef("");
 
   const { addDailyResponse } = useFirestore();
   const { user } = useAuth();
+  const { fetchDailyResponse } = useFirestore();
+
+  useEffect(() => {
+    const fetchResponse = async () => {
+      const dailyResponse = await fetchDailyResponse(user?.uid);
+
+      if (dailyResponse.success) {
+        setCurrentResponse(dailyResponse.data);
+      } else if (dailyResponse.msg == "No response for today") {
+        // No action needed, user can submit a new response
+      } else {
+        Alert.alert("Your Responses", dailyResponse.msg);
+      }
+    };
+
+    fetchResponse();
+  }, []);
 
   const handlePromptSubmit = async () => {
     setLoading(true);
 
     const userID = user.uid; // Replace with actual user ID
 
-    const response = await addDailyResponse(userID, responseRef.current);
+    const response = await addDailyResponse(userID, currentResponse);
 
     setLoading(false);
 
     if (!response.success) {
       Alert.alert("Post Publicly", response.msg);
     } else {
+      router.push("/(app)/feed");
     }
   };
 
@@ -53,7 +71,8 @@ export default function Home() {
       <View style={globalStyleSheet.textInputContainer}>
         <Text style={globalStyleSheet.textInputTitle}>Answer The Prompt</Text>
         <TextInput
-          onChangeText={(text) => (responseRef.current = text)}
+          value={currentResponse}
+          onChangeText={(text) => setCurrentResponse(text)}
           style={globalStyleSheet.textAreaInput}
           placeholder="Type your answer here..."
           multiline={true}

@@ -114,4 +114,10 @@ export const globalStyleSheet = StyleSheet.create({
     fontFamily: globalStyles.fonts.primary,
     color: globalStyles.colors.secondaryText,
   },
+  linkText: {
+    fontFamily: globalStyles.fonts.primarySemiBold,
+    fontSize: 18,
+    textDecorationLine: "underline",
+    color: globalStyles.colors.primary,
+  },
 });
