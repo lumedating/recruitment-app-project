@@ -2,7 +2,7 @@ import FeedItem from "@/components/feedItem";
 import { useAuth } from "@/context/authContext";
 import { useFirestore } from "@/context/firestoreContext";
 import { globalStyles, globalStyleSheet } from "@/globalStyles";
-import { Link, useRouter } from "expo-router";
+import { Link } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import {
@@ -11,49 +11,38 @@ import {
 } from "react-native-responsive-screen";
 
 export default function Feed() {
-  type ResponseItem = {
-    likes: number;
-    responseID: string;
-    responseText: string;
-    timestamp: any;
-    username: string;
-    userId: string;
-    likedBy: { [userId: string]: boolean }; // Map of userIds who liked this response
-  };
-
-  const [otherResponses, setOtherResponses] = useState<ResponseItem[]>([]);
-
-  const [userResponse, setUserResponse] = useState("");
-  const router = useRouter();
+  const [userResponse, setUserResponse] = useState<any>(null);
+  const [otherResponses, setOtherResponses] = useState<any[]>([]);
   const { user } = useAuth();
-  const {
-    fetchDailyResponse,
-    fetchAllDailyResponsesExceptUser,
-    toggleLikeOnResponse,
-  } = useFirestore();
-
-  const fetchResponses = async () => {
-    const [userRes, othersRes] = await Promise.all([
-      fetchDailyResponse(user?.uid),
-      fetchAllDailyResponsesExceptUser(user?.uid),
-    ]);
-
-    if (!userRes.success) {
-      Alert.alert("Your Response", userRes.msg);
-    } else {
-      setUserResponse(userRes.data);
-    }
-
-    if (!othersRes.success) {
-      Alert.alert("Feed", othersRes.msg);
-    } else {
-      setOtherResponses(othersRes.data);
-    }
-  };
+  const { listenToDailyResponses, toggleLikeOnResponse } = useFirestore();
 
   useEffect(() => {
-    fetchResponses();
-  }, []);
+    if (!user?.uid) return;
+
+    const unsubscribe = listenToDailyResponses(
+      user.uid,
+      (myResponse: any, others: any[]) => {
+        setUserResponse(myResponse);
+        setOtherResponses(others);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [user?.uid]);
+
+  const handleLikePress = async (ownerId: string) => {
+    if (!user?.uid) {
+      Alert.alert("Error", "User ID not available.");
+      return;
+    }
+
+    try {
+      await toggleLikeOnResponse(ownerId, user.uid);
+    } catch (error: any) {
+      console.error("Failed to like:", error.message);
+      Alert.alert("Error", "Failed to like the post. Please try again.");
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -66,23 +55,22 @@ export default function Feed() {
             Edit response
           </Link>
         </View>
-        <Text style={styles.personalResponseText}>{userResponse}</Text>
+        <Text style={styles.personalResponseText}>
+          {userResponse?.responseText || "No response submitted yet."}
+        </Text>
       </View>
 
-      <View>
-        {otherResponses.map((res, idx) => (
+      <View style={styles.feedContainer}>
+        {otherResponses.map((res) => (
           <FeedItem
-            key={res.responseID || idx}
+            key={res.responseID}
             profilePic={require("../../assets/images/Anonymous Profile Picture.png")}
             username={"Anonymous"}
             likeCount={res.likes || 0}
             likedBy={res.likedBy || {}}
-            userId={res.userId} // Who posted this response
+            userId={res.userId}
             currentUserId={user?.uid}
-            onLikePress={async () => {
-              await toggleLikeOnResponse(res.userId, user?.uid);
-              await fetchResponses(); // Refreshes the full state
-            }}
+            onLikePress={() => handleLikePress(res.userId)}
           >
             {res.responseText || ""}
           </FeedItem>
@@ -114,11 +102,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   personalResponseTop: {
-    display: "flex",
+    flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
-    width: "100%",
-    flexDirection: "row",
   },
   personalResponseHeader: {
     fontFamily: globalStyles.fonts.secondary,
@@ -130,5 +116,9 @@ const styles = StyleSheet.create({
     fontFamily: globalStyles.fonts.primary,
     fontSize: 25,
     lineHeight: 25,
+  },
+  feedContainer: {
+    width: "100%",
+    marginTop: 50,
   },
 });

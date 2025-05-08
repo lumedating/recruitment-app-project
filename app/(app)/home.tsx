@@ -36,6 +36,7 @@ export default function Home() {
         setCurrentResponse(dailyResponse.data);
       } else if (dailyResponse.msg == "No response for today") {
         // No action needed, user can submit a new response
+        console.log("No response for today, user can submit a new one.");
       } else {
         Alert.alert("Your Responses", dailyResponse.msg);
       }

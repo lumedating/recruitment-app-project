@@ -8,8 +8,8 @@ export default function FeedItem({
   username,
   likeCount,
   likedBy,
-  userId, // Who posted this response
-  currentUserId, // The user viewing this feed
+  userId,
+  currentUserId,
   onLikePress,
 }: {
   children: React.ReactNode;
@@ -21,7 +21,7 @@ export default function FeedItem({
   currentUserId: string;
   onLikePress: () => void;
 }) {
-  const hasLiked = likedBy?.[currentUserId];
+  const hasLiked = likedBy?.[currentUserId] === true;
 
   return (
     <View style={styles.container}>
@@ -53,12 +53,8 @@ export default function FeedItem({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    width: "100%",
-    paddingVertical: 25,
-  },
+  container: { width: "100%", paddingBottom: 30 },
   containerTop: {
-    display: "flex",
     flexDirection: "row",
     alignItems: "center",
   },
@@ -80,7 +76,6 @@ const styles = StyleSheet.create({
     lineHeight: 25,
   },
   containerBottom: {
-    display: "flex",
     flexDirection: "row",
     alignItems: "center",
     marginTop: 10,

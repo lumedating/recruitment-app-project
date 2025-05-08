@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   getDoc,
+  onSnapshot,
   runTransaction,
   serverTimestamp,
   setDoc,
@@ -14,7 +15,6 @@ export const FirestoreContext = createContext();
 export const FirestoreContextProvider = ({ children }) => {
   const addDailyResponse = async (userId, responseText) => {
     try {
-      // Get today's date in LOCAL time (not UTC)
       const currentDateObj = new Date();
       const localDate =
         currentDateObj.getFullYear() +
@@ -27,37 +27,34 @@ export const FirestoreContextProvider = ({ children }) => {
 
       const responseData = {
         likes: 0,
-        responseID: responseID,
-        responseText: responseText,
+        likedBy: {},
+        responseID,
+        responseText,
         timestamp: serverTimestamp(),
         username: "Anonymous",
       };
 
-      // 1️⃣ Update the dailyResponses collection (map with userId keys)
       const dailyResponseRef = doc(db, "dailyResponses", localDate);
+      const userDocRef = doc(db, "users", userId);
+
+      // Write both (not transactionally)
       await setDoc(
         dailyResponseRef,
         {
-          responses: {
-            [userId]: responseData,
-          },
+          responses: { [userId]: responseData },
         },
         { merge: true }
       );
 
-      // 2️⃣ Update the users collection (responses map keyed by date)
-      const userDocRef = doc(db, "users", userId);
       await setDoc(
         userDocRef,
         {
-          responses: {
-            [localDate]: responseData,
-          },
+          responses: { [localDate]: responseData },
         },
         { merge: true }
       );
 
-      return { success: true, data: responseID };
+      return { success: true };
     } catch (error) {
       return { success: false, msg: error.message };
     }
@@ -96,111 +93,88 @@ export const FirestoreContextProvider = ({ children }) => {
     }
   };
 
-  const fetchAllDailyResponsesExceptUser = async (userId) => {
-    try {
-      const currentDateObj = new Date();
-      const localDate =
-        currentDateObj.getFullYear() +
-        "-" +
-        String(currentDateObj.getMonth() + 1).padStart(2, "0") +
-        "-" +
-        String(currentDateObj.getDate()).padStart(2, "0");
+  const listenToDailyResponses = (userId, callback) => {
+    const currentDateObj = new Date();
+    const localDate =
+      currentDateObj.getFullYear() +
+      "-" +
+      String(currentDateObj.getMonth() + 1).padStart(2, "0") +
+      "-" +
+      String(currentDateObj.getDate()).padStart(2, "0");
 
-      const dailyResponseRef = doc(db, "dailyResponses", localDate);
-      const dailySnap = await getDoc(dailyResponseRef);
+    const dailyResponseRef = doc(db, "dailyResponses", localDate);
 
-      if (!dailySnap.exists()) {
-        return { success: false, msg: "No responses for today yet." };
-      }
-
-      const allResponses = dailySnap.data().responses || {};
-
-      // Filter out current user's response
-      const otherResponses = Object.entries(allResponses)
+    return onSnapshot(dailyResponseRef, (docSnap) => {
+      const data = docSnap.exists() ? docSnap.data().responses || {} : {};
+      const userResponse = data[userId] || null;
+      const others = Object.entries(data)
         .filter(([uid]) => uid !== userId)
         .map(([uid, response]) => ({
           ...response,
           userId: uid,
-          likedBy: response.likedBy || {},
         }))
         .sort((a, b) => (b.likes || 0) - (a.likes || 0));
-
-      return { success: true, data: otherResponses };
-    } catch (error) {
-      return { success: false, msg: error.message };
-    }
+      callback(userResponse, others);
+    });
   };
 
   const toggleLikeOnResponse = async (responseOwnerId, currentUserId) => {
+    if (!responseOwnerId || !currentUserId) {
+      console.warn("Missing response owner ID or current user ID.");
+      return;
+    }
+
+    const currentDateObj = new Date();
+    const localDate =
+      currentDateObj.getFullYear() +
+      "-" +
+      String(currentDateObj.getMonth() + 1).padStart(2, "0") +
+      "-" +
+      String(currentDateObj.getDate()).padStart(2, "0");
+
+    const dailyResponseRef = doc(db, "dailyResponses", localDate);
+    const userDocRef = doc(db, "users", responseOwnerId);
+
     try {
-      const currentDateObj = new Date();
-      const localDate =
-        currentDateObj.getFullYear() +
-        "-" +
-        String(currentDateObj.getMonth() + 1).padStart(2, "0") +
-        "-" +
-        String(currentDateObj.getDate()).padStart(2, "0");
-
-      const dailyResponseRef = doc(db, "dailyResponses", localDate);
-      const userDocRef = doc(db, "users", responseOwnerId);
-
-      const result = await runTransaction(db, async (transaction) => {
+      await runTransaction(db, async (transaction) => {
         const dailySnap = await transaction.get(dailyResponseRef);
-        if (!dailySnap.exists()) throw new Error("Daily responses not found");
-
-        const data = dailySnap.data();
-        const response = data.responses?.[responseOwnerId];
-        if (!response) throw new Error("Response not found");
-
-        const likedBy = response.likedBy || {};
-        const hasLiked = likedBy[currentUserId] === true;
-
-        const updatedLikedBy = { ...likedBy };
-        if (hasLiked) {
-          delete updatedLikedBy[currentUserId];
-        } else {
-          updatedLikedBy[currentUserId] = true;
+        if (!dailySnap.exists()) {
+          console.warn("No daily response doc found.");
+          throw new Error("Daily response not found");
         }
 
-        const newLikeCount = Object.keys(updatedLikedBy).length;
+        const allResponses = dailySnap.data().responses || {};
+        const response = allResponses[responseOwnerId];
+        if (!response) {
+          console.warn("No response found for this owner.");
+          throw new Error("Response not found");
+        }
 
-        const updatedResponse = {
-          ...response,
-          likes: newLikeCount,
-          likedBy: updatedLikedBy,
-        };
+        const likedBy = response.likedBy || {};
+        const hasLiked = likedBy[currentUserId];
 
-        // Update both docs within the transaction
-        transaction.set(
-          dailyResponseRef,
-          {
-            responses: {
-              [responseOwnerId]: updatedResponse,
-            },
-          },
-          { merge: true }
-        );
+        if (hasLiked) {
+          delete likedBy[currentUserId];
+        } else {
+          likedBy[currentUserId] = true;
+        }
 
-        transaction.set(
-          userDocRef,
-          {
-            responses: {
-              [localDate]: updatedResponse,
-            },
-          },
-          { merge: true }
-        );
+        const newLikeCount = Object.keys(likedBy).length;
 
-        return {
-          newLikeCount,
-          newLikedBy: updatedLikedBy,
-          hasLiked: !hasLiked,
-        };
+        // ✅ Instead of set, use update with dot notation for nested fields
+        transaction.update(dailyResponseRef, {
+          [`responses.${responseOwnerId}.likedBy`]: likedBy,
+          [`responses.${responseOwnerId}.likes`]: newLikeCount,
+        });
+
+        transaction.update(userDocRef, {
+          [`responses.${localDate}.likedBy`]: likedBy,
+          [`responses.${localDate}.likes`]: newLikeCount,
+        });
       });
-
-      return result;
     } catch (error) {
-      console.error("Failed to toggle like:", error);
+      console.error("Transaction failed:", error.message);
+      throw error;
     }
   };
 
@@ -209,7 +183,7 @@ export const FirestoreContextProvider = ({ children }) => {
       value={{
         addDailyResponse,
         fetchDailyResponse,
-        fetchAllDailyResponsesExceptUser,
+        listenToDailyResponses,
         toggleLikeOnResponse,
       }}
     >
@@ -220,10 +194,8 @@ export const FirestoreContextProvider = ({ children }) => {
 
 export const useFirestore = () => {
   const value = useContext(FirestoreContext);
-
   if (!value) {
     throw new Error("useFirestore must be used within a FirestoreProvider");
   }
-
   return value;
 };
