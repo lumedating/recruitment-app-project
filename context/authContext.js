@@ -4,8 +4,9 @@ import {
   signInWithEmailAndPassword,
   signOut,
 } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
 import { createContext, useContext, useEffect, useState } from "react";
-import { auth } from "../firebaseConfig";
+import { auth, db } from "../firebaseConfig";
 
 export const AuthContext = createContext();
 
@@ -52,7 +53,11 @@ export const AuthContextProvider = ({ children }) => {
         email,
         password
       );
-      console.log("RESPONSE: ", response?.user);
+
+      await setDoc(doc(db, "users", response?.user?.uid), {
+        username: "Anonymous",
+        responses: {},
+      });
 
       return { success: true, data: response?.user };
     } catch (error) {
@@ -75,5 +80,6 @@ export const useAuth = () => {
   if (!value) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
+
   return value;
 };

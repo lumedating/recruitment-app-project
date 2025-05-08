@@ -1,7 +1,11 @@
 import Loading from "@/components/Loading";
+import { useAuth } from "@/context/authContext";
+import { useFirestore } from "@/context/firestoreContext";
 import { globalStyles, globalStyleSheet } from "@/globalStyles";
-import React, { useState } from "react";
+import { useRouter } from "expo-router";
+import React, { useRef, useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -17,8 +21,26 @@ import {
 
 export default function Home() {
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const responseRef = useRef("");
 
-  const handlePromptSubmit = async () => {};
+  const { addDailyResponse } = useFirestore();
+  const { user } = useAuth();
+
+  const handlePromptSubmit = async () => {
+    setLoading(true);
+
+    const userID = user.uid; // Replace with actual user ID
+
+    const response = await addDailyResponse(userID, responseRef.current);
+
+    setLoading(false);
+
+    if (!response.success) {
+      Alert.alert("Post Publicly", response.msg);
+    } else {
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -31,6 +53,7 @@ export default function Home() {
       <View style={globalStyleSheet.textInputContainer}>
         <Text style={globalStyleSheet.textInputTitle}>Answer The Prompt</Text>
         <TextInput
+          onChangeText={(text) => (responseRef.current = text)}
           style={globalStyleSheet.textAreaInput}
           placeholder="Type your answer here..."
           multiline={true}

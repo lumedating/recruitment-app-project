@@ -1,18 +1,28 @@
+import FeedHeader from "@/components/feedHeader";
+import PromptHeader from "@/components/PromptHeader";
+import { FirestoreContextProvider } from "@/context/firestoreContext";
 import { Stack } from "expo-router";
 import React from "react";
 import { StyleSheet } from "react-native";
-import PromptHeader from "../../components/PromptHeader";
 
 export default function _layout() {
   return (
-    <Stack>
-      <Stack.Screen
-        name="home"
-        options={{
-          header: () => <PromptHeader />,
-        }}
-      />
-    </Stack>
+    <FirestoreContextProvider>
+      <Stack>
+        <Stack.Screen
+          name="home"
+          options={{
+            header: () => <PromptHeader />,
+          }}
+        />
+        <Stack.Screen
+          name="feed"
+          options={{
+            header: () => <FeedHeader />,
+          }}
+        />
+      </Stack>
+    </FirestoreContextProvider>
   );
 }
 
