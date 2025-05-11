@@ -9,19 +9,14 @@ import {
 } from "firebase/firestore";
 import { createContext, useContext } from "react";
 import { db } from "../firebaseConfig";
+import { getLocalDateString } from "../utils/dateUtils";
 
 export const FirestoreContext = createContext();
 
 export const FirestoreContextProvider = ({ children }) => {
   const addDailyResponse = async (userId, responseText) => {
     try {
-      const currentDateObj = new Date();
-      const localDate =
-        currentDateObj.getFullYear() +
-        "-" +
-        String(currentDateObj.getMonth() + 1).padStart(2, "0") +
-        "-" +
-        String(currentDateObj.getDate()).padStart(2, "0");
+      const localDate = getLocalDateString();
 
       const dailyResponseRef = doc(db, "dailyResponses", localDate);
       const userDocRef = doc(db, "users", userId);
@@ -73,14 +68,7 @@ export const FirestoreContextProvider = ({ children }) => {
 
   const fetchDailyResponse = async (userId) => {
     try {
-      // Get today's date in LOCAL time (YYYY-MM-DD)
-      const currentDateObj = new Date();
-      const localDate =
-        currentDateObj.getFullYear() +
-        "-" +
-        String(currentDateObj.getMonth() + 1).padStart(2, "0") +
-        "-" +
-        String(currentDateObj.getDate()).padStart(2, "0");
+      const localDate = getLocalDateString();
 
       // Reference to the user's doc
       const userDocRef = doc(db, "users", userId);
@@ -105,13 +93,7 @@ export const FirestoreContextProvider = ({ children }) => {
   };
 
   const listenToDailyResponses = (userId, callback) => {
-    const currentDateObj = new Date();
-    const localDate =
-      currentDateObj.getFullYear() +
-      "-" +
-      String(currentDateObj.getMonth() + 1).padStart(2, "0") +
-      "-" +
-      String(currentDateObj.getDate()).padStart(2, "0");
+    const localDate = getLocalDateString();
 
     const dailyResponseRef = doc(db, "dailyResponses", localDate);
 
@@ -135,13 +117,7 @@ export const FirestoreContextProvider = ({ children }) => {
       return;
     }
 
-    const currentDateObj = new Date();
-    const localDate =
-      currentDateObj.getFullYear() +
-      "-" +
-      String(currentDateObj.getMonth() + 1).padStart(2, "0") +
-      "-" +
-      String(currentDateObj.getDate()).padStart(2, "0");
+    const localDate = getLocalDateString();
 
     const dailyResponseRef = doc(db, "dailyResponses", localDate);
     const userDocRef = doc(db, "users", responseOwnerId);

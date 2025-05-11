@@ -1,4 +1,4 @@
-import { globalStyles } from "@/globalStyles";
+import { globalStyles, globalStyleSheet } from "@/globalStyles";
 import React from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
@@ -48,12 +48,14 @@ export default function FeedItem({
         />
         <Text style={styles.likeCountText}>{likeCount}</Text>
       </TouchableOpacity>
+
+      <View style={globalStyleSheet.divider} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { width: "100%", paddingBottom: 30 },
+  container: { width: "100%", paddingBottom: 25 },
   containerTop: {
     flexDirection: "row",
     alignItems: "center",
@@ -78,7 +80,7 @@ const styles = StyleSheet.create({
   containerBottom: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 10,
+    marginTop: 5,
   },
   likeCountImage: {
     width: 30,

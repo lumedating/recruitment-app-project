@@ -120,4 +120,10 @@ export const globalStyleSheet = StyleSheet.create({
     textDecorationLine: "underline",
     color: globalStyles.colors.primary,
   },
+  divider: {
+    width: "100%",
+    height: 1,
+    backgroundColor: globalStyles.colors.line,
+    marginTop: 25,
+  },
 });
